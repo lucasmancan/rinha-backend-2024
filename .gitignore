@@ -1,0 +1,7 @@
+.idea
+.gradle
+build/
+rinha-de-backend-2023-q3
+
+*.jar
+*.zip
