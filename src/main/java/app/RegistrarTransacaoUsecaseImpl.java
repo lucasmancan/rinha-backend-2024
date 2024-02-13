@@ -4,10 +4,11 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DSL;
 
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.List;
+import javax.sql.DataSource;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.jooq.impl.DSL.field;
@@ -18,21 +19,49 @@ public class RegistrarTransacaoUsecaseImpl implements RegistrarTransacaoUsecase 
     private final DSLContext context;
 
     @Inject
-    public RegistrarTransacaoUsecaseImpl(DSLContext context) {
-        this.context = context;
+    public RegistrarTransacaoUsecaseImpl(DataSource dataSource) {
+        this.context = DSL.using(dataSource, SQLDialect.POSTGRES);
     }
 
     @Override
     public SaldoTransacao registrar(Transacao transacao) {
-        Cliente cliente = buscarClientePorId(transacao.idCliente());
 
+        boolean atualizado = false;
+        SaldoTransacao saldoTransacao = null;
 
+        while (!atualizado) {
+            Cliente cliente = buscarClientePorId(transacao.idCliente());
 
+            long saldoClienteAtualizado = cliente.saldo - transacao.valor();
 
+            if (TipoTransacao.DEBITO == transacao.tipo()) {
+                if (cliente.limite < (saldoClienteAtualizado*-1)) {
+                    throw new LimiteInsulficienteException();
+                }
+            }
 
+            boolean clienteAtualizado = context.update(table("clientes"))
+                    .set(field("saldo"), saldoClienteAtualizado)
+                    .set(field("versao"), cliente.versao + 1)
+                    .where(field("cliente_id").eq(transacao.idCliente()))
+                    .and(field("versao").eq(cliente.versao()))
+                    .execute() > 0;
 
-        return null;
+            if (!clienteAtualizado)
+                continue;
+
+            context.insertInto(table("transacoes"), field("cliente_id"), field("realizada_em"), field("valor"), field("tipo"), field("descricao"))
+                    .values(transacao.idCliente(), LocalDateTime.now(), transacao.valor(), transacao.tipo().codigo, transacao.descricao())
+                    .execute();
+
+            atualizado = true;
+
+            saldoTransacao = new SaldoTransacao(cliente.limite(), saldoClienteAtualizado);
+        }
+
+        return saldoTransacao;
     }
+
 
     private Cliente buscarClientePorId(int idCliente) {
         return Optional.ofNullable(context.fetchOne(table("clientes"), field("cliente_id").eq(idCliente)))
@@ -47,6 +76,12 @@ public class RegistrarTransacaoUsecaseImpl implements RegistrarTransacaoUsecase 
         );
     }
 
-    class ClienteNaoEncontradoException extends RuntimeException {}
-    record Cliente(int idCliente, long saldo, long limite, int versao){}
+    static class LimiteInsulficienteException extends RuntimeException {
+    }
+
+    static class ClienteNaoEncontradoException extends RuntimeException {
+    }
+
+    record Cliente(int idCliente, long saldo, long limite, int versao) {
+    }
 }

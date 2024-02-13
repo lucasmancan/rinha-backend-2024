@@ -13,7 +13,7 @@ public class App extends Jooby {
         install(new JacksonModule());
         install(new NettyServer());
         install(new HikariModule("db"));
-        install(PessoaRouter::new);
+        install(ClienteRouter::new);
     }
 
     public static void main(final String[] args) {
