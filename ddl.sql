@@ -8,7 +8,7 @@ SET default_table_access_method = heap;
 -- Nova rinha
 DROP TABLE IF EXISTS public.clientes;
 
-CREATE TABLE public.clientes (
+CREATE UNLOGGED TABLE public.clientes (
     cliente_id serial not null,
     nome varchar(32) not null,
     data_criacao timestamp not null default current_timestamp,
@@ -18,7 +18,7 @@ CREATE TABLE public.clientes (
     primary key (cliente_id)
 );
 
-CREATE TABLE public.transacoes (
+CREATE UNLOGGED TABLE public.transacoes (
     id serial not null,
     cliente_id int not null,
     realizada_em timestamp not null,
@@ -28,10 +28,23 @@ CREATE TABLE public.transacoes (
     primary key (id)
 );
 
+CREATE INDEX idx_transacoes_id_cliente ON transacoes
+(
+    cliente_id ASC
+);
+
   INSERT INTO public.clientes (nome, limite)
   VALUES
-    ('o barato sai caro', 1000 * 100),
-    ('zan corp ltda', 800 * 100),
-    ('les cruders', 10000 * 100),
-    ('padaria joia de cocaia', 100000 * 100),
-    ('kid mais', 5000 * 100);
+    ('o barato sai caro', 100000),
+    ('zan corp ltda', 80000),
+    ('les cruders', 1000000),
+    ('padaria joia de cocaia', 10000000),
+    ('kid mais', 500000);
+
+
+--CREATE PROCEDURE reset_db()
+--    LANGUAGE SQL
+--    BEGIN ATOMIC
+--    UPDATE clientes set saldo = 0;
+--    SELECT 'TRUNCATE TABLE transacoes';
+--END;

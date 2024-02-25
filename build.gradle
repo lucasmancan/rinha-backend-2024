@@ -37,6 +37,7 @@ dependencyManagement {
   }
 }
 
+
 dependencies {
   implementation group: 'org.jooq', name: 'jooq', version: '3.18.6'
   implementation group: 'org.postgresql', name: 'postgresql', version: '42.6.0'
@@ -51,7 +52,6 @@ dependencies {
   testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"
   testImplementation "org.junit.jupiter:junit-jupiter-engine:5.10.0"
   testImplementation "io.jooby:jooby-test"
-  testImplementation "com.squareup.okhttp3:okhttp:4.11.0"
 }
 
 test {
