@@ -35,14 +35,14 @@ public class App extends Jooby {
         install(ClienteRouter::new);
 
         onStarted(() -> {
-
-            for (int i = 0; i < 100; i++) {
-                warmUp();
-            }
-
-            resetDb();
-
-            System.out.println("Completed");
+//
+//            for (int i = 0; i < 100; i++) {
+//                warmUp();
+//            }
+//
+//            resetDb();
+//
+//            System.out.println("Completed");
 
         });
 

@@ -46,15 +46,16 @@ public class ClienteRouter extends Jooby {
                 try (Connection connection = dataSource.getConnection()) {
                     PreparedStatement stmt = connection.prepareStatement("""
                                                         
-                            select cliente.saldo, cliente.limite,
+                            select cliente.saldo,
+                             cliente.limite,
                             transacao.valor,
                             transacao.tipo,
                             transacao.descricao,
-                            transacao.realizada_em 
+                            transacao.realizada_em
                              from clientes cliente
                              left join transacoes transacao on cliente.cliente_id = transacao.cliente_id
                              where cliente.cliente_id = ?
-                             order by transacao.realizada_em
+                             order by transacao.realizada_em desc
                              limit 10
                                                         
                             """,ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
@@ -78,7 +79,6 @@ public class ClienteRouter extends Jooby {
                     }
 
                     result.first();
-
                     return new Extrato(new Saldo(result.getLong("saldo"), LocalDateTime.now(), result.getLong("limite")), listaTransacoes);
                 }
             }));
