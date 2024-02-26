@@ -18,7 +18,7 @@ public class ClienteRouter extends Jooby {
     {
         final var dataSource = require(DataSource.class);
 
-        get("/health-check", (ctx) -> {
+        get("/reset", (ctx) -> {
 
             try (Connection connection = dataSource.getConnection()) {
                 PreparedStatement stmt = connection.prepareStatement("""
@@ -32,6 +32,9 @@ public class ClienteRouter extends Jooby {
 
                 return "OK";
             }
+        });
+        get("/health-check", (ctx) -> {
+                return "OK";
         });
 
         path("/clientes", () -> {
@@ -74,7 +77,7 @@ public class ClienteRouter extends Jooby {
                                 result.getString("tipo"),
                                 result.getLong("valor"),
                                 result.getString("descricao"),
-                                result.getDate("realizada_em")
+                                result.getTimestamp("realizada_em")
                         ));
                     }
 

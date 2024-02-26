@@ -8,7 +8,7 @@ SET default_table_access_method = heap;
 -- Nova rinha
 DROP TABLE IF EXISTS public.clientes;
 
-CREATE UNLOGGED TABLE public.clientes (
+CREATE TABLE public.clientes (
     cliente_id serial not null,
     nome varchar(32) not null,
     data_criacao timestamp not null default current_timestamp,
@@ -18,7 +18,7 @@ CREATE UNLOGGED TABLE public.clientes (
     primary key (cliente_id)
 );
 
-CREATE UNLOGGED TABLE public.transacoes (
+CREATE TABLE public.transacoes (
     id serial not null,
     cliente_id int not null,
     realizada_em timestamp not null default current_timestamp,
