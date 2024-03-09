@@ -4,40 +4,24 @@ import io.jooby.Jooby;
 import io.jooby.StatusCode;
 
 import javax.sql.DataSource;
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
 
 public class ClienteRouter extends Jooby {
 
     {
         final var dataSource = require(DataSource.class);
 
-        get("/reset", (ctx) -> {
-
-            try (Connection connection = dataSource.getConnection()) {
-                PreparedStatement stmt = connection.prepareStatement("""
-                                                       
-                            update clientes set saldo = 0 where cliente_id > -1;
-                            delete from transacoes where 1=1; 
-                                                        
-                            """,ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-
-                var result = stmt.executeUpdate();
-
-                return "OK";
-            }
-        });
         get("/health-check", (ctx) -> {
-                return "OK";
+            return "OK";
         });
 
         path("/clientes", () -> {
+
             get("/{id}/extrato", (ctx -> {
 
                 var idCliente = ctx.path("id").intValue();
@@ -47,32 +31,39 @@ public class ClienteRouter extends Jooby {
                 }
 
                 try (Connection connection = dataSource.getConnection()) {
+
                     PreparedStatement stmt = connection.prepareStatement("""
                                                         
                             select cliente.saldo,
                              cliente.limite,
-                            transacao.valor,
-                            transacao.tipo,
-                            transacao.descricao,
-                            transacao.realizada_em
+                             transacao.valor,
+                             transacao.tipo,
+                             transacao.descricao,
+                             transacao.realizada_em
                              from clientes cliente
                              left join transacoes transacao on cliente.cliente_id = transacao.cliente_id
                              where cliente.cliente_id = ?
                              order by transacao.realizada_em desc
-                             limit 10
-                                                        
-                            """,ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+                             limit 10;
+                                                  
+                            """);
 
                     stmt.setInt(1, idCliente);
 
                     var result = stmt.executeQuery();
 
-                    if (!result.next()) {
-                        return ctx.send(StatusCode.UNPROCESSABLE_ENTITY);
-                    }
-
                     ArrayList<HistoricoTransacao> listaTransacoes = new ArrayList<>();
+
+                    long saldoCliente = 0;
+                    long limiteCliente = 0;
+
                     while (result.next()) {
+
+                        if (result.isFirst()) {
+                            saldoCliente = result.getLong("saldo");
+                            limiteCliente = result.getLong("limite");
+                        }
+
                         listaTransacoes.add(new HistoricoTransacao(
                                 result.getString("tipo"),
                                 result.getLong("valor"),
@@ -81,8 +72,10 @@ public class ClienteRouter extends Jooby {
                         ));
                     }
 
-                    result.first();
-                    return new Extrato(new Saldo(result.getLong("saldo"), LocalDateTime.now(), result.getLong("limite")), listaTransacoes);
+                    return new Extrato(new Saldo(saldoCliente,
+                            LocalDateTime.now(),
+                            limiteCliente),
+                            listaTransacoes);
                 }
             }));
 
@@ -105,10 +98,10 @@ public class ClienteRouter extends Jooby {
                                                         
                             update clientes set saldo = saldo + ?
                                 where cliente_id = ?
-                                and (( ? > 0 ) or (saldo + ?) >= (limite * -1))
+                                and (( ? > 0 ) or (saldo + ?) > (limite * -1))
                                 returning saldo, limite
                                                         
-                            """, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+                            """);
 
                     stmt.setLong(1, request.valorToLong());
                     stmt.setInt(2, idCliente);
@@ -117,20 +110,23 @@ public class ClienteRouter extends Jooby {
 
                     var result = stmt.executeQuery();
 
-                    if (!result.first()) {
+                    if (!result.isBeforeFirst()) {
                         return ctx.send(StatusCode.UNPROCESSABLE_ENTITY);
                     }
 
-                    PreparedStatement stmtInsert = connection.prepareStatement("""
-                                                        
-                            insert into transacoes (cliente_id, valor, descricao, tipo) values (?,?,?,?);
+                    result.next();
+
+                    PreparedStatement stmtInsert = connection.prepareStatement("""             
+                            insert into transacoes (cliente_id, valor, descricao, tipo, realizada_em) values (?,?,?,?,?);
                             """);
 
                     stmtInsert.setInt(1, ctx.path("id").intValue());
                     stmtInsert.setLong(2, request.valorAbsoluto());
-                    stmtInsert.setString(3, request.descricao);
-                    stmtInsert.setString(4, request.tipo);
+                    stmtInsert.setString(3, request.descricao());
+                    stmtInsert.setString(4, request.tipo());
+                    stmtInsert.setTimestamp(5, Timestamp.from(Instant.now()));
                     stmtInsert.executeUpdate();
+                    stmtInsert.close();
 
                     return new SaldoTransacao(result.getLong("limite"), result.getLong("saldo"));
                 }
@@ -139,28 +135,5 @@ public class ClienteRouter extends Jooby {
 
     }
 
-    public record TransacaoRequest(BigDecimal valor, String tipo, String descricao) {
 
-        public boolean valido() {
-            if (valor.compareTo(BigDecimal.ZERO) == 0 || valor.scale() != 0)
-                return false;
-
-            if (!Objects.equals(tipo, "d") && !Objects.equals(tipo, "c")) {
-                return false;
-            }
-
-            return descricao != null && (descricao.length() <= 10 && descricao.length() >= 1);
-        }
-
-        public long valorAbsoluto() {
-            return this.valor.longValue();
-        }
-
-        public long valorToLong() {
-            if (tipo.equals("d")) {
-                return valor.longValue() * -1;
-            }
-            return valor.longValue();
-        }
-    }
 }

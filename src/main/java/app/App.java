@@ -34,54 +34,12 @@ public class App extends Jooby {
         install(new HikariModule("db"));
         install(ClienteRouter::new);
 
-        onStarted(() -> {
-//
-//            for (int i = 0; i < 100; i++) {
-//                warmUp();
-//            }
-//
-//            resetDb();
-//
-//            System.out.println("Completed");
-
-        });
-
     }
 
     public static void main(final String[] args) {
         System.setProperty("org.jooq.no-logo", "true");
         System.setProperty("org.jooq.no-tips", "true");
         runApp(args, App::new);
-
-
     }
 
-    private static void warmUp() throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        MediaType mediaType = MediaType.parse("text/plain");
-        Request request = new Request.Builder()
-                .url("http://localhost:8080/clientes/2/extrato")
-                .method("GET", null)
-                .build();
-        Response response = client.newCall(request).execute();
-
-        RequestBody body = RequestBody.create(mediaType, "{\n    \"valor\": 1,\n    \"tipo\": \"d\",\n    \"descricao\":\"123\"\n}");
-        Request request2 = new Request.Builder()
-                .url("http://localhost:8080/clientes/2/transacoes")
-                .method("POST", body)
-                .addHeader("Content-Type", "application/json")
-                .build();
-         client.newCall(request).execute();
-         client.newCall(request).execute();
-    }
-
-    private static void resetDb() throws IOException {
-        OkHttpClient client = new OkHttpClient();
-        MediaType mediaType = MediaType.parse("text/plain");
-        Request request = new Request.Builder()
-                .url("http://localhost:8080/health-check")
-                .method("GET", null)
-                .build();
-        Response response = client.newCall(request).execute();
-    }
 }

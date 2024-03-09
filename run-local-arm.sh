@@ -1,0 +1,1 @@
+./gradlew clean build && docker-compose down --volumes && docker-compose -f docker-compose-arm.yml up -d --build --force-recreate && sh ./executar-teste-local.sh

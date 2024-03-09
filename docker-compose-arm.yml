@@ -2,7 +2,9 @@ version: '3.9'
 
 services:
   api1: &api
-    image: docker.io/lucasmancan/rinhabackend-2024:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.arm
     hostname: api1
     environment:
       - SERVER_PORT=8080
