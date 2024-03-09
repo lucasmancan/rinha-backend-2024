@@ -1,11 +1,16 @@
 
 buildscript {
   ext {
-
     joobyVersion = "3.0.7"
   }
+
   repositories {
     mavenCentral()
+
+    maven {
+      url "https://raw.githubusercontent.com/graalvm/native-build-tools/snapshots"
+    }
+    gradlePluginPortal()
   }
 
   dependencies {
@@ -17,9 +22,9 @@ buildscript {
 plugins {
   id "application"
   id "io.jooby.run" version "${joobyVersion}"
-  id "io.spring.dependency-management" version "1.1.0"
   id "com.google.osdetector" version "1.7.3"
   id "com.github.johnrengelman.shadow" version "8.1.1"
+  id 'org.graalvm.buildtools.native' version '0.10.1'
 }
 
 group "app"
@@ -31,24 +36,15 @@ repositories {
   mavenCentral()
 }
 
-dependencyManagement {
-  imports {
-    mavenBom "io.jooby:jooby-bom:$joobyVersion"
-  }
-}
-
-
 dependencies {
-  implementation group: 'org.jooq', name: 'jooq', version: '3.18.6'
-  implementation group: 'org.postgresql', name: 'postgresql', version: '42.6.0'
+  implementation group: 'org.postgresql', name: 'postgresql', version: '42.7.2'
   implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.15.2'
-  implementation 'ch.qos.logback:logback-classic:'
+  implementation("com.squareup.okhttp:okhttp:2.7.5")
 
-  implementation "io.jooby:jooby-hikari"
-  implementation "io.jooby:jooby-netty"
-  implementation "io.jooby:jooby-redis"
-  implementation "io.jooby:jooby-logback"
-  implementation 'io.jooby:jooby-jackson'
+  implementation "io.jooby:jooby-hikari:${joobyVersion}"
+  implementation "io.jooby:jooby-netty:${joobyVersion}"
+  implementation "io.jooby:jooby-logback:${joobyVersion}"
+  implementation "io.jooby:jooby-jackson:${joobyVersion}"
   testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"
   testImplementation "org.junit.jupiter:junit-jupiter-engine:5.10.0"
   testImplementation "io.jooby:jooby-test"

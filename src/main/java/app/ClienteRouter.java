@@ -1,82 +1,139 @@
 package app;
 
-import app.consultarextrato.ConsultarExtratoUsecaseImpl;
-import app.registrartransacao.RegistrarTransacaoOptimisticLockingUsecaseImpl;
-import app.registrartransacao.RegistrarTransacaoUsecaseImpl;
-import app.registrartransacao.Transacao;
 import io.jooby.Jooby;
 import io.jooby.StatusCode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.math.BigDecimal;
-import java.util.Objects;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 
 public class ClienteRouter extends Jooby {
 
-    private final Logger logger = LoggerFactory.getLogger(ClienteRouter.class);
-
     {
+        final var dataSource = require(DataSource.class);
 
-        final var registrarTransacaoUsecase = new RegistrarTransacaoUsecaseImpl(require(DataSource.class));
-        final var consultarExtratoUsecase = new ConsultarExtratoUsecaseImpl(require(DataSource.class));
-
-
-        get("/health-check", (ctx) -> "OK");
+        get("/health-check", (ctx) -> {
+            return "OK";
+        });
 
         path("/clientes", () -> {
+
             get("/{id}/extrato", (ctx -> {
 
-                try {
-                    return consultarExtratoUsecase.gerarExtratoPorIdCliente(ctx.path("id").intValue());
-                } catch (ClienteNaoEncontradoException e) {
+                var idCliente = ctx.path("id").intValue();
+
+                if (idCliente < 0 || idCliente > 5) {
                     return ctx.send(StatusCode.NOT_FOUND);
-                } catch (Exception ex) {
-                    logger.error(ex.getMessage(), ex);
-                    return ctx.send(StatusCode.SERVER_ERROR);
+                }
+
+                try (Connection connection = dataSource.getConnection()) {
+
+                    PreparedStatement stmt = connection.prepareStatement("""
+                                                        
+                            select cliente.saldo,
+                             cliente.limite,
+                             transacao.valor,
+                             transacao.tipo,
+                             transacao.descricao,
+                             transacao.realizada_em
+                             from clientes cliente
+                             left join transacoes transacao on cliente.cliente_id = transacao.cliente_id
+                             where cliente.cliente_id = ?
+                             order by transacao.realizada_em desc
+                             limit 10;
+                                                  
+                            """);
+
+                    stmt.setInt(1, idCliente);
+
+                    var result = stmt.executeQuery();
+
+                    ArrayList<HistoricoTransacao> listaTransacoes = new ArrayList<>();
+
+                    long saldoCliente = 0;
+                    long limiteCliente = 0;
+
+                    while (result.next()) {
+
+                        if (result.isFirst()) {
+                            saldoCliente = result.getLong("saldo");
+                            limiteCliente = result.getLong("limite");
+                        }
+
+                        listaTransacoes.add(new HistoricoTransacao(
+                                result.getString("tipo"),
+                                result.getLong("valor"),
+                                result.getString("descricao"),
+                                result.getTimestamp("realizada_em")
+                        ));
+                    }
+
+                    return new Extrato(new Saldo(saldoCliente,
+                            LocalDateTime.now(),
+                            limiteCliente),
+                            listaTransacoes);
                 }
             }));
 
             post("/{id}/transacoes", (ctx -> {
 
-                try {
-                    var request = ctx.body(TransacaoRequest.class);
+                var idCliente = ctx.path("id").intValue();
 
-                    if (!request.valido()) {
+                if (idCliente < 0 || idCliente > 5) {
+                    return ctx.send(StatusCode.NOT_FOUND);
+                }
+
+                var request = ctx.body(TransacaoRequest.class);
+
+                if (!request.valido()) {
+                    return ctx.send(StatusCode.UNPROCESSABLE_ENTITY);
+                }
+
+                try (Connection connection = dataSource.getConnection()) {
+                    PreparedStatement stmt = connection.prepareStatement("""
+                                                        
+                            update clientes set saldo = saldo + ?
+                                where cliente_id = ?
+                                and (( ? > 0 ) or (saldo + ?) > (limite * -1))
+                                returning saldo, limite
+                                                        
+                            """);
+
+                    stmt.setLong(1, request.valorToLong());
+                    stmt.setInt(2, idCliente);
+                    stmt.setLong(3, request.valorToLong());
+                    stmt.setLong(4, request.valorToLong());
+
+                    var result = stmt.executeQuery();
+
+                    if (!result.isBeforeFirst()) {
                         return ctx.send(StatusCode.UNPROCESSABLE_ENTITY);
                     }
 
-                    return registrarTransacaoUsecase.registrar(new Transacao(
-                            ctx.path("id").intValue(),
-                            request.valor().longValue(),
-                            request.tipo(),
-                            request.descricao()
-                    ));
-                } catch (ClienteNaoEncontradoException e) {
-                    return ctx.send(StatusCode.NOT_FOUND);
-                } catch (LimiteInsuficienteException limiteInsulficienteException) {
-                    return ctx.send(StatusCode.UNPROCESSABLE_ENTITY);
-                } catch (Exception ex) {
-                    logger.error(ex.getMessage(), ex);
-                    return ctx.send(StatusCode.SERVER_ERROR);
+                    result.next();
+
+                    PreparedStatement stmtInsert = connection.prepareStatement("""             
+                            insert into transacoes (cliente_id, valor, descricao, tipo, realizada_em) values (?,?,?,?,?);
+                            """);
+
+                    stmtInsert.setInt(1, ctx.path("id").intValue());
+                    stmtInsert.setLong(2, request.valorAbsoluto());
+                    stmtInsert.setString(3, request.descricao());
+                    stmtInsert.setString(4, request.tipo());
+                    stmtInsert.setTimestamp(5, Timestamp.from(Instant.now()));
+                    stmtInsert.executeUpdate();
+                    stmtInsert.close();
+
+                    return new SaldoTransacao(result.getLong("limite"), result.getLong("saldo"));
                 }
             }));
         });
 
     }
 
-    public record TransacaoRequest(BigDecimal valor, String tipo, String descricao) {
 
-        public boolean valido() {
-            if (valor.compareTo(BigDecimal.ZERO) ==0 || valor.scale() != 0)
-                return false;
-
-            if (!Objects.equals(tipo, "d") && !Objects.equals(tipo, "c")) {
-                return false;
-            }
-
-            return descricao != null && (descricao.length() <= 10 && descricao.length() >= 1);
-        }
-    }
 }

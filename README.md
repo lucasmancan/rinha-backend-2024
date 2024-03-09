@@ -1,16 +1,16 @@
-# rinha-backend-2024
+# Rinha de Backend 2024/Q1 - Controle de Concorrência
 
-Welcome to rinha-backend-app!!
+## 💻 Tecnologias
+- `nginx` como load balancer
+- `postgres` como banco de dados
+- `jooby` servidor http
+- `java` 
 
-## running
+## Repositório
+- [repositório da api](https://github.com/lucasmancan/rinha-backend-2024)
 
-    ./gradlew joobyRun
+![images do relatorio do gatling](https://github.com/lucasmancan/rinha-backend-2024/resultado_rinhabackend.png)
 
-## building
+## Autor
 
-    ./gradlew build
-
-## docker
-
-     docker build . -t rinha-backend-2024
-     docker run -p 8080:8080 -it rinha-backend-2024
+[![linkedin](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/lucasmancan/)

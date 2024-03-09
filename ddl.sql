@@ -5,7 +5,6 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
--- Nova rinha
 DROP TABLE IF EXISTS public.clientes;
 
 CREATE UNLOGGED TABLE public.clientes (
@@ -21,7 +20,7 @@ CREATE UNLOGGED TABLE public.clientes (
 CREATE UNLOGGED TABLE public.transacoes (
     id serial not null,
     cliente_id int not null,
-    realizada_em timestamp not null,
+    realizada_em timestamp not null default current_timestamp,
     valor bigint not null,
     tipo char not null,
     descricao varchar(10) null,
@@ -41,10 +40,3 @@ CREATE INDEX idx_transacoes_id_cliente ON transacoes
     ('padaria joia de cocaia', 10000000),
     ('kid mais', 500000);
 
-
---CREATE PROCEDURE reset_db()
---    LANGUAGE SQL
---    BEGIN ATOMIC
---    UPDATE clientes set saldo = 0;
---    SELECT 'TRUNCATE TABLE transacoes';
---END;
