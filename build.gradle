@@ -1,7 +1,7 @@
 
 buildscript {
   ext {
-    joobyVersion = "3.0.7"
+    joobyVersion = "3.0.8"
   }
 
   repositories {
@@ -39,10 +39,8 @@ repositories {
 dependencies {
   implementation group: 'org.postgresql', name: 'postgresql', version: '42.7.2'
   implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.15.2'
-  implementation("com.squareup.okhttp:okhttp:2.7.5")
-
   implementation "io.jooby:jooby-hikari:${joobyVersion}"
-  implementation "io.jooby:jooby-netty:${joobyVersion}"
+  implementation "io.jooby:jooby-jetty:${joobyVersion}"
   implementation "io.jooby:jooby-logback:${joobyVersion}"
   implementation "io.jooby:jooby-jackson:${joobyVersion}"
   testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"

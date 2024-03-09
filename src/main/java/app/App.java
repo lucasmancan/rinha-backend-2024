@@ -5,15 +5,15 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.squareup.okhttp.*;
 import io.jooby.Jooby;
 import io.jooby.hikari.HikariModule;
 import io.jooby.jackson.JacksonModule;
-import io.jooby.netty.NettyServer;
+import io.jooby.jetty.JettyServer;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.Executors;
 
 
 public class App extends Jooby {
@@ -30,7 +30,11 @@ public class App extends Jooby {
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         install(new JacksonModule(mapper));
-        install(new NettyServer());
+        QueuedThreadPool worker = new QueuedThreadPool();
+        worker.setReservedThreads(0);
+        worker.setVirtualThreadsExecutor(Executors.newVirtualThreadPerTaskExecutor());
+
+        install(new JettyServer(worker));
         install(new HikariModule("db"));
         install(ClienteRouter::new);
 
