@@ -1,15 +1,15 @@
 # Rinha de Backend 2024/Q1 - Controle de Concorrência
 
-## 💻 Tecnologias
+## Tecnologias
 - `nginx` como load balancer
 - `postgres` como banco de dados
 - `jooby` servidor http
-- `java` 
+- `java 21` 
 
 ## Repositório
 - [repositório da api](https://github.com/lucasmancan/rinha-backend-2024)
 
-![images do relatorio do gatling](https://github.com/lucasmancan/rinha-backend-2024/resultado_rinhabackend.png)
+![images do relatorio do gatling](https://github.com/lucasmancan/rinha-backend-2024/blob/master/resultado_rinha_backend.png)
 
 ## Autor
 
